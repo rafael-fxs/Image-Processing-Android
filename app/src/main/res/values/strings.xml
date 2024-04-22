@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">Image Processing Application</string>
+    <string name="capture_photo">Capture photo</string>
+    <string name="toggle_flash">Toggle Flash</string>
+    <string name="flip_camera">Flip Camera</string>
+    <string name="captured_image">Captured image</string>
+    <string name="back_to_home">Back to home</string>
+</resources>
