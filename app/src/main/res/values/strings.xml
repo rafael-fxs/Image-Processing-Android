@@ -5,4 +5,5 @@
     <string name="flip_camera">Flip Camera</string>
     <string name="captured_image">Captured image</string>
     <string name="back_to_home">Back to home</string>
+    <string name="save_image">Save Image</string>
 </resources>

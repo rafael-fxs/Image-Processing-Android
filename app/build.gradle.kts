@@ -60,4 +60,5 @@ dependencies {
     implementation(libs.androidx.camera.extensions)
     implementation(libs.glide)
     annotationProcessor(libs.compiler)
+
 }

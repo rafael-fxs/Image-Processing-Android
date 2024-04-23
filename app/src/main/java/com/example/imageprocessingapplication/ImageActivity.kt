@@ -34,11 +34,13 @@ class ImageActivity : AppCompatActivity() {
     private lateinit var bGrayFilter: ImageView
     private lateinit var bNegativeFilter: ImageView
     private lateinit var bSepiaFilter: ImageView
+    private lateinit var bSobelFilter: ImageView
 
     private lateinit var seekBarBrightness: SeekBar
     private lateinit var seekBarContrast: SeekBar
 
     private lateinit var originalBitmap: Bitmap
+    private lateinit var previewBitmap: Bitmap
     private lateinit var actualBitmap: Bitmap
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -48,6 +50,7 @@ class ImageActivity : AppCompatActivity() {
 
         imageUri = Uri.parse(intent.getStringExtra("imageUri"))
         originalBitmap = loadBitmapFromUri(imageUri)
+        previewBitmap = reduceResolution(originalBitmap,  0.5f)
 
         imageView = binding.imageView
         Glide.with(this)
@@ -65,8 +68,16 @@ class ImageActivity : AppCompatActivity() {
 
         startPreviewFilters()
         actualBitmap = originalBitmap
+
         startSeekBars()
     }
+
+    private fun reduceResolution(inputBitmap: Bitmap, scaleFactor: Float): Bitmap {
+        val width = (inputBitmap.width * scaleFactor).toInt()
+        val height = (inputBitmap.height * scaleFactor).toInt()
+        return Bitmap.createScaledBitmap(inputBitmap, width, height, true)
+    }
+
 
     private fun startSeekBars() {
         seekBarBrightness = binding.seekBarBrightness
@@ -94,43 +105,53 @@ class ImageActivity : AppCompatActivity() {
         bGrayFilter = binding.bGrayFilter
         bNegativeFilter = binding.bNegativeFilter
         bSepiaFilter = binding.bSepiaFilter
+        bSobelFilter = binding.bSobelFilter
 
         Glide.with(this)
             .load(imageUri)
             .into(bResetFilter)
 
         Glide.with(this)
-            .load(applyFilter(FilterType.GRAY))
+            .load(applyFilter(FilterType.GRAY, true))
             .into(bGrayFilter)
 
         Glide.with(this)
-            .load(applyFilter(FilterType.NEGATIVE))
+            .load(applyFilter(FilterType.NEGATIVE, true))
             .into(bNegativeFilter)
 
         Glide.with(this)
-            .load(applyFilter(FilterType.SEPIA))
+            .load(applyFilter(FilterType.SEPIA, true))
             .into(bSepiaFilter)
+
+        Glide.with(this)
+            .load(applyFilter(FilterType.SOBEL, true))
+            .into(bSobelFilter)
 
         bResetFilter.setOnClickListener{
             resetSeek()
-            imageView.setImageBitmap(applyFilter(FilterType.RESET))
+            imageView.setImageBitmap(applyFilter(FilterType.RESET, true))
         }
 
         bGrayFilter.setOnClickListener{
             resetSeek()
-            imageView.setImageBitmap(applyFilter(FilterType.GRAY))
+            imageView.setImageBitmap(applyFilter(FilterType.GRAY, true))
         }
 
 
         bNegativeFilter.setOnClickListener{
             resetSeek()
-            imageView.setImageBitmap(applyFilter(FilterType.NEGATIVE))
+            imageView.setImageBitmap(applyFilter(FilterType.NEGATIVE, true))
         }
 
 
         bSepiaFilter.setOnClickListener{
             resetSeek()
-            imageView.setImageBitmap(applyFilter(FilterType.SEPIA))
+            imageView.setImageBitmap(applyFilter(FilterType.SEPIA, true))
+        }
+
+        bSobelFilter.setOnClickListener{
+            resetSeek()
+            imageView.setImageBitmap(applyFilter(FilterType.SOBEL, true))
         }
     }
 
@@ -161,19 +182,24 @@ class ImageActivity : AppCompatActivity() {
         }
     }
 
-    private fun applyFilter(filterType: FilterType): Bitmap {
+    private fun applyFilter(filterType: FilterType, isPreviewImage: Boolean): Bitmap {
+        var bitmap: Bitmap = if (isPreviewImage) previewBitmap else originalBitmap
+
         if (filterType == FilterType.RESET) {
-            return originalBitmap
+            return bitmap
+        }
+        if (filterType == FilterType.SOBEL) {
+            return applySobelFilter(isPreviewImage);
         }
 
-        val resultBitmap = Bitmap.createBitmap(originalBitmap.width, originalBitmap.height, Bitmap.Config.ARGB_8888)
+        val resultBitmap = Bitmap.createBitmap(bitmap.width, bitmap.height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(resultBitmap)
         val paint = Paint()
         val colorMatrix = getColorMatrix(filterType)
         val filter = ColorMatrixColorFilter(colorMatrix)
         paint.colorFilter = filter
-        canvas.drawBitmap(originalBitmap, 0f, 0f, paint)
-        actualBitmap = resultBitmap
+        canvas.drawBitmap(bitmap, 0f, 0f, paint)
+        if (!isPreviewImage) actualBitmap = resultBitmap
         return resultBitmap
     }
 
@@ -240,6 +266,11 @@ class ImageActivity : AppCompatActivity() {
 
         canvas.drawBitmap(originalBitmap, 0f, 0f, paint)
         return resultBitmap
+    }
+
+    private fun applySobelFilter(isPreviewImage: Boolean): Bitmap {
+        val bitmap = applyFilter(FilterType.RESET, isPreviewImage)
+        return bitmap
     }
 
     private fun resetSeek() {
