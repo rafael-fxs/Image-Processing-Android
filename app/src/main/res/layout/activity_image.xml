@@ -15,8 +15,8 @@
         android:background="#000000"
         android:contentDescription="@string/captured_image"
         app:srcCompat="?android:attr/scrollbarTrackVertical"
-        tools:layout_editor_absoluteX="84dp"
-        tools:layout_editor_absoluteY="49dp" />
+        tools:layout_editor_absoluteX="-39dp"
+        tools:layout_editor_absoluteY="0dp" />
 
     <ImageView
         android:id="@+id/bGrayFilter"
@@ -42,6 +42,30 @@
         app:layout_constraintStart_toStartOf="parent"
         app:srcCompat="?android:attr/scrollbarTrackVertical" />
 
+
+    <ImageView
+        android:id="@+id/bNegativeFilter"
+        android:layout_width="80dp"
+        android:layout_height="100dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginBottom="24dp"
+        android:background="#FFFFFF"
+        android:contentDescription="@string/captured_image"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toEndOf="@+id/bGrayFilter"
+        app:srcCompat="?android:attr/scrollbarTrackVertical" />
+
+    <ImageView
+        android:id="@+id/bSepiaFilter"
+        android:layout_width="80dp"
+        android:layout_height="100dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginBottom="24dp"
+        android:background="#FFFFFF"
+        android:contentDescription="@string/captured_image"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toEndOf="@+id/bNegativeFilter"
+        app:srcCompat="?android:attr/scrollbarTrackVertical" />
 
     <ImageButton
         android:id="@+id/bBackMain"

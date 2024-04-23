@@ -7,111 +7,145 @@ import android.graphics.ColorMatrix
 import android.graphics.ColorMatrixColorFilter
 import android.graphics.Matrix
 import android.graphics.Paint
-import android.media.ExifInterface
 import android.net.Uri
 import android.os.Bundle
 import android.widget.ImageView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.databinding.DataBindingUtil
+import androidx.exifinterface.media.ExifInterface
 import com.bumptech.glide.Glide
 import com.example.imageprocessingapplication.databinding.ActivityImageBinding
 import java.io.InputStream
 
 
 class ImageActivity : AppCompatActivity() {
-    lateinit var binding: ActivityImageBinding
+    private lateinit var binding: ActivityImageBinding
 
     private lateinit var imageView: ImageView
+    private lateinit var imageUri: Uri
+
     private lateinit var bResetFilter: ImageView
     private lateinit var bGrayFilter: ImageView
+    private lateinit var bNegativeFilter: ImageView
+    private lateinit var bSepiaFilter: ImageView
 
     private lateinit var originalBitmap: Bitmap
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = DataBindingUtil.setContentView(this ,R.layout.activity_image)
 
-        val imageUri = Uri.parse(intent.getStringExtra("imageUri"))
+        imageUri = Uri.parse(intent.getStringExtra("imageUri"))
         originalBitmap = loadBitmapFromUri(imageUri)
 
-        imageView = binding.imageView;
+        imageView = binding.imageView
         Glide.with(this)
             .load(imageUri)
             .into(imageView)
 
-        bResetFilter = binding.bResetFilter;
-        bResetFilter.setOnClickListener{
-            resetFilter()
-        }
-        Glide.with(this)
-            .load(imageUri)
-            .override(80, 100)
-            .into(bResetFilter)
-
-        bGrayFilter = binding.bGrayFilter;
-        bGrayFilter.setOnClickListener{
-            imageView.setImageBitmap(getGrayscaleFilter())
-        }
-        Glide.with(this)
-            .load(getGrayscaleFilter())
-            .override(80, 100)
-            .into(bGrayFilter)
-
         binding.bBackMain.setOnClickListener{
             finish()
         }
+
+        startPreviewFilters()
+    }
+
+    private fun startPreviewFilters() {
+        bResetFilter = binding.bResetFilter
+        bGrayFilter = binding.bGrayFilter
+        bNegativeFilter = binding.bNegativeFilter
+        bSepiaFilter = binding.bSepiaFilter
+
+        Glide.with(this)
+            .load(imageUri)
+            .into(bResetFilter)
+
+        Glide.with(this)
+            .load(applyFilter(FilterType.GRAY))
+            .into(bGrayFilter)
+
+        Glide.with(this)
+            .load(applyFilter(FilterType.NEGATIVE))
+            .into(bNegativeFilter)
+
+        Glide.with(this)
+            .load(applyFilter(FilterType.SEPIA))
+            .into(bSepiaFilter)
+
+        bResetFilter.setOnClickListener{
+            imageView.setImageBitmap(applyFilter(FilterType.RESET))
+        }
+
+        bGrayFilter.setOnClickListener{
+            imageView.setImageBitmap(applyFilter(FilterType.GRAY))
+        }
+
+
+        bNegativeFilter.setOnClickListener{
+            imageView.setImageBitmap(applyFilter(FilterType.NEGATIVE))
+        }
+
+
+        bSepiaFilter.setOnClickListener{
+            imageView.setImageBitmap(applyFilter(FilterType.SEPIA))
+        }
+    }
+
+    private fun getExifOrientation(uri: Uri): Int {
+        val exifInterface = ExifInterface(contentResolver.openInputStream(uri)!!)
+        return exifInterface.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_UNDEFINED)
     }
 
     private fun loadBitmapFromUri(uri: Uri): Bitmap {
         val inputStream: InputStream? = contentResolver.openInputStream(uri)
         val bitmap = BitmapFactory.decodeStream(inputStream)
-        val rotation = getRotationFromExif(uri)
-        return if (rotation != 0) {
-            rotateBitmap(bitmap, rotation)
-        } else {
-            bitmap
-        }
+        val rotation = getExifOrientation(uri)
+        return rotateBitmap(bitmap, rotation)
     }
 
-    private fun getRotationFromExif(uri: Uri): Int {
-        var rotation = 0
-        val inputStream: InputStream? = contentResolver.openInputStream(uri)
-        inputStream.use { stream ->
-            stream?.let {
-                val exif = ExifInterface(stream)
-                val orientation = exif.getAttributeInt(
-                    ExifInterface.TAG_ORIENTATION,
-                    ExifInterface.ORIENTATION_NORMAL
-                )
-                when (orientation) {
-                    ExifInterface.ORIENTATION_ROTATE_90 -> rotation = 90
-                    ExifInterface.ORIENTATION_ROTATE_180 -> rotation = 180
-                    ExifInterface.ORIENTATION_ROTATE_270 -> rotation = 270
-                }
-            }
-        }
-        return rotation
-    }
-    private fun rotateBitmap(bitmap: Bitmap, degrees: Int): Bitmap {
+    private fun rotateBitmap(bitmap: Bitmap, rotation: Int): Bitmap {
         val matrix = Matrix()
-        matrix.postRotate(degrees.toFloat())
+        matrix.postRotate(getRotationAngle(rotation))
         return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
     }
 
-    private fun resetFilter() {
-        imageView.setImageBitmap(originalBitmap)
+    private fun getRotationAngle(rotation: Int): Float {
+        return when (rotation) {
+            ExifInterface.ORIENTATION_ROTATE_90 -> 90f
+            ExifInterface.ORIENTATION_ROTATE_180 -> 180f
+            ExifInterface.ORIENTATION_ROTATE_270 -> 270f
+            else -> 0f
+        }
     }
 
-    private fun getGrayscaleFilter(): Bitmap {
-        val grayBitmap: Bitmap = originalBitmap.copy(originalBitmap.config, true)
-        val colorMatrix = ColorMatrix()
-        colorMatrix.setSaturation(0f)
+    private fun applyFilter(filterType: FilterType): Bitmap {
+        if (filterType == FilterType.RESET) {
+            return originalBitmap
+        }
 
-        val filter = ColorMatrixColorFilter(colorMatrix)
+        val resultBitmap = Bitmap.createBitmap(originalBitmap.width, originalBitmap.height, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(resultBitmap)
         val paint = Paint()
+        val colorMatrix = getColorMatrix(filterType)
+        val filter = ColorMatrixColorFilter(colorMatrix)
         paint.colorFilter = filter
-
-        val canvas = Canvas(grayBitmap)
         canvas.drawBitmap(originalBitmap, 0f, 0f, paint)
-        return grayBitmap
+        return resultBitmap
+    }
+
+    private fun getColorMatrix(filterType: FilterType): ColorMatrix {
+        return when (filterType) {
+            FilterType.GRAY -> ColorMatrix().apply { setSaturation(0f) }
+            FilterType.NEGATIVE -> ColorMatrix(floatArrayOf(
+                -1f, 0f, 0f, 0f, 255f,
+                0f, -1f, 0f, 0f, 255f,
+                0f, 0f, -1f, 0f, 255f,
+                0f, 0f, 0f, 1f, 0f
+            ))
+            FilterType.SEPIA -> ColorMatrix().apply {
+                setScale(1f, 0.8f, 0.5f, 1f)
+            }
+            else -> ColorMatrix()
+        }
     }
 }
