@@ -14,7 +14,34 @@
         android:layout_height="match_parent"
         android:background="#000000"
         android:contentDescription="@string/captured_image"
+        app:srcCompat="?android:attr/scrollbarTrackVertical"
+        tools:layout_editor_absoluteX="84dp"
+        tools:layout_editor_absoluteY="49dp" />
+
+    <ImageView
+        android:id="@+id/bGrayFilter"
+        android:layout_width="80dp"
+        android:layout_height="100dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginBottom="24dp"
+        android:background="#FFFFFF"
+        android:contentDescription="@string/captured_image"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toEndOf="@+id/bResetFilter"
         app:srcCompat="?android:attr/scrollbarTrackVertical" />
+
+    <ImageView
+        android:id="@+id/bResetFilter"
+        android:layout_width="80dp"
+        android:layout_height="100dp"
+        android:layout_marginStart="24dp"
+        android:layout_marginBottom="24dp"
+        android:background="#FFFFFF"
+        android:contentDescription="@string/captured_image"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:srcCompat="?android:attr/scrollbarTrackVertical" />
+
 
     <ImageButton
         android:id="@+id/bBackMain"
@@ -28,6 +55,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:srcCompat="?attr/homeAsUpIndicator"
-        app:tint="@color/white" />
+        app:tint="@color/white"
+        tools:ignore="TouchTargetSizeCheck" />
 </androidx.constraintlayout.widget.ConstraintLayout>
 </layout>

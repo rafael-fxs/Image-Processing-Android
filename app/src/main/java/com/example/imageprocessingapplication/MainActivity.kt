@@ -163,8 +163,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun takePhoto() {
-        val fileName = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-            .format(System.currentTimeMillis())
+        val fileName = System.currentTimeMillis()
 
         val contentValues = ContentValues()
         contentValues.put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
