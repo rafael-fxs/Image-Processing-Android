@@ -1,5 +1,6 @@
 package com.example.imageprocessingapplication
 
+import android.content.ContentValues
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
@@ -9,12 +10,17 @@ import android.graphics.Matrix
 import android.graphics.Paint
 import android.net.Uri
 import android.os.Bundle
+import android.provider.MediaStore
 import android.widget.ImageView
+import android.widget.SeekBar
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.databinding.DataBindingUtil
 import androidx.exifinterface.media.ExifInterface
 import com.bumptech.glide.Glide
 import com.example.imageprocessingapplication.databinding.ActivityImageBinding
+import java.io.ByteArrayOutputStream
+import java.io.FileOutputStream
 import java.io.InputStream
 
 
@@ -29,11 +35,16 @@ class ImageActivity : AppCompatActivity() {
     private lateinit var bNegativeFilter: ImageView
     private lateinit var bSepiaFilter: ImageView
 
+    private lateinit var seekBarBrightness: SeekBar
+    private lateinit var seekBarContrast: SeekBar
+
     private lateinit var originalBitmap: Bitmap
+    private lateinit var actualBitmap: Bitmap
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = DataBindingUtil.setContentView(this ,R.layout.activity_image)
+
 
         imageUri = Uri.parse(intent.getStringExtra("imageUri"))
         originalBitmap = loadBitmapFromUri(imageUri)
@@ -43,11 +54,39 @@ class ImageActivity : AppCompatActivity() {
             .load(imageUri)
             .into(imageView)
 
+
         binding.bBackMain.setOnClickListener{
             finish()
         }
 
+        binding.bSaveImage.setOnClickListener{
+            saveImage()
+        }
+
         startPreviewFilters()
+        actualBitmap = originalBitmap
+        startSeekBars()
+    }
+
+    private fun startSeekBars() {
+        seekBarBrightness = binding.seekBarBrightness
+        seekBarBrightness.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                applyBrightness(progress)
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
+
+        seekBarContrast = binding.seekBarContrast
+        seekBarContrast.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                val contrast = progress / 100f
+                applyContrast(contrast)
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
     }
 
     private fun startPreviewFilters() {
@@ -73,20 +112,24 @@ class ImageActivity : AppCompatActivity() {
             .into(bSepiaFilter)
 
         bResetFilter.setOnClickListener{
+            resetSeek()
             imageView.setImageBitmap(applyFilter(FilterType.RESET))
         }
 
         bGrayFilter.setOnClickListener{
+            resetSeek()
             imageView.setImageBitmap(applyFilter(FilterType.GRAY))
         }
 
 
         bNegativeFilter.setOnClickListener{
+            resetSeek()
             imageView.setImageBitmap(applyFilter(FilterType.NEGATIVE))
         }
 
 
         bSepiaFilter.setOnClickListener{
+            resetSeek()
             imageView.setImageBitmap(applyFilter(FilterType.SEPIA))
         }
     }
@@ -130,6 +173,7 @@ class ImageActivity : AppCompatActivity() {
         val filter = ColorMatrixColorFilter(colorMatrix)
         paint.colorFilter = filter
         canvas.drawBitmap(originalBitmap, 0f, 0f, paint)
+        actualBitmap = resultBitmap
         return resultBitmap
     }
 
@@ -147,5 +191,104 @@ class ImageActivity : AppCompatActivity() {
             }
             else -> ColorMatrix()
         }
+    }
+
+    private fun applyBrightness(brightnessValue: Int) {
+        val adjustedBitmap = adjustBrightness(brightnessValue)
+        imageView.setImageBitmap(adjustedBitmap)
+    }
+    private fun adjustBrightness(value: Int): Bitmap {
+        val resultBitmap = Bitmap.createBitmap(originalBitmap.width, originalBitmap.height, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(resultBitmap)
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+        val colorMatrix = ColorMatrix()
+        colorMatrix.set(floatArrayOf(
+            1f, 0f, 0f, 0f, value.toFloat(),
+            0f, 1f, 0f, 0f, value.toFloat(),
+            0f, 0f, 1f, 0f, value.toFloat(),
+            0f, 0f, 0f, 1f, 0f
+        ))
+
+        val colorFilter = ColorMatrixColorFilter(colorMatrix)
+        paint.colorFilter = colorFilter
+
+        canvas.drawBitmap(originalBitmap, 0f, 0f, paint)
+        actualBitmap = resultBitmap
+        return resultBitmap
+    }
+
+    private fun applyContrast(contrastValue: Float) {
+        val adjustedBitmap = adjustContrast(contrastValue)
+        imageView.setImageBitmap(adjustedBitmap)
+    }
+
+    private fun adjustContrast(value: Float): Bitmap {
+        val resultBitmap = Bitmap.createBitmap(originalBitmap.width, originalBitmap.height, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(resultBitmap)
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+        val colorMatrix = ColorMatrix()
+        val scale = value + 1f
+        val translate = -(128 * scale) + 128
+        colorMatrix.set(floatArrayOf(
+            scale, 0f, 0f, 0f, translate,
+            0f, scale, 0f, 0f, translate,
+            0f, 0f, scale, 0f, translate,
+            0f, 0f, 0f, 1f, 0f
+        ))
+        val colorFilter = ColorMatrixColorFilter(colorMatrix)
+        paint.colorFilter = colorFilter
+
+        canvas.drawBitmap(originalBitmap, 0f, 0f, paint)
+        return resultBitmap
+    }
+
+    private fun resetSeek() {
+        seekBarBrightness.progress = 0
+        seekBarContrast.progress = 0
+    }
+
+    private fun saveImage() {
+        val fileName: String = System.currentTimeMillis().toString().replace(":", ".") + ".jpg"
+        val contentValues = ContentValues().apply {
+            put(MediaStore.Images.Media.TITLE, fileName)
+            put(MediaStore.Images.Media.DISPLAY_NAME, fileName)
+            put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+        }
+
+        val contentResolver = this.contentResolver
+        val uri: Uri? = contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
+
+        uri?.let {
+            val fileDescriptor = contentResolver.openFileDescriptor(it, "w")?.fileDescriptor
+            val outputStream = FileOutputStream(fileDescriptor)
+
+            // Calculating the desired quality for a 1MB file size
+            val targetFileSize = 1024 * 1024 // 1MB in bytes
+            var quality = 100
+            var bitmapStream: ByteArrayOutputStream? = null
+            var bitmapBytes: ByteArray? = null
+
+            while (outputStream.channel.size() > targetFileSize && quality > 0) {
+                bitmapStream = ByteArrayOutputStream()
+                actualBitmap.compress(Bitmap.CompressFormat.JPEG, quality, bitmapStream)
+                bitmapBytes = bitmapStream.toByteArray()
+                quality -= 5 // Decrease quality gradually
+            }
+
+            bitmapBytes?.let {
+                outputStream.write(it)
+            }
+
+            outputStream.flush()
+            outputStream.close()
+            bitmapStream?.close()
+        }
+
+        Toast.makeText(
+            this@ImageActivity,
+            "Imagem salva!",
+            Toast.LENGTH_LONG
+        ).show()
+        finish()
     }
 }

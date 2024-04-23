@@ -1,11 +1,13 @@
 package com.example.imageprocessingapplication
 
 import android.Manifest
+import android.content.ContentValues
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.MediaStore
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.Camera
@@ -116,37 +118,41 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun takePhoto() {
-        val outputDirectory = getOutputDirectory()
-        val fileName = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.getDefault()).format(Date())
-        val photoFile = File(
-            outputDirectory,
-            "IMG_${fileName}.jpg"
-        )
+        val fileName = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+            .format(System.currentTimeMillis())
 
-        val outputFileOptions = OutputFileOptions.Builder(photoFile).build()
+        val contentValues = ContentValues()
+
+        contentValues.put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+        contentValues.put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
+
+        val outputOption = OutputFileOptions.Builder(
+            contentResolver,
+            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+            contentValues
+        ).build()
 
         imageCapture.takePicture(
-            outputFileOptions, ContextCompat.getMainExecutor(this),
+            outputOption, ContextCompat.getMainExecutor(this),
             object : ImageCapture.OnImageSavedCallback {
                 override fun onError(exc: ImageCaptureException) {
                     Toast.makeText(
                         this@MainActivity,
                         "Error capturing image: ${exc.message}",
-                        Toast.LENGTH_SHORT
+                        Toast.LENGTH_LONG
                     ).show()
                 }
 
                 override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
-                    val savedUri = Uri.fromFile(photoFile)
-                    val message = "Photo captured: $savedUri"
+                    val message = "Photo Capture Succeeded: ${outputFileResults.savedUri}"
                     Toast.makeText(
                         this@MainActivity,
                         message,
-                        Toast.LENGTH_SHORT
+                        Toast.LENGTH_LONG
                     ).show()
 
                     val intent = Intent(this@MainActivity, ImageActivity::class.java)
-                    intent.putExtra("imageUri", savedUri.toString())
+                    intent.putExtra("imageUri", outputFileResults.savedUri.toString())
                     startActivity(intent)
                 }
             })
@@ -159,4 +165,5 @@ class MainActivity : AppCompatActivity() {
         return if (mediaDir != null && mediaDir.exists())
             mediaDir else filesDir
     }
+
 }
