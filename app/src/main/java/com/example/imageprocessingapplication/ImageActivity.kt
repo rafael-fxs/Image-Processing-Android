@@ -36,6 +36,8 @@ import org.opencv.imgproc.Imgproc
 import java.io.File
 import java.io.InputStream
 import java.io.OutputStream
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 
 class ImageActivity : AppCompatActivity() {
@@ -99,13 +101,6 @@ class ImageActivity : AppCompatActivity() {
 
         loadImageWithGlide(button, applyFilter(filterType))
     }
-
-    private fun reduceResolution(inputBitmap: Bitmap, scaleFactor: Float): Bitmap {
-        val width = (inputBitmap.width * scaleFactor).toInt()
-        val height = (inputBitmap.height * scaleFactor).toInt()
-        return Bitmap.createScaledBitmap(inputBitmap, width, height, true)
-    }
-
 
     private fun startSeekBars() {
         seekBarBrightness = binding.seekBarBrightness
@@ -282,7 +277,7 @@ class ImageActivity : AppCompatActivity() {
 
         val kernel = Mat(3, 3, CvType.CV_32F)
         kernel.put(0, 0, -2.0, -1.0, 0.0)
-        kernel.put(1, 0, -1.0, 2.0, 1.0) // Adiciona um deslocamento de intensidade
+        kernel.put(1, 0, -1.0, 2.0, 1.0)
         kernel.put(2, 0, 0.0, 1.0, 2.0)
 
         Imgproc.filter2D(embossMat, embossMat, CvType.CV_8U, kernel, Point(-1.0, -1.0), 0.0)
@@ -331,9 +326,11 @@ class ImageActivity : AppCompatActivity() {
 
     private fun saveImage(): Uri? {
         val bitmap = actualBitmap
-        val imageName: String = System.currentTimeMillis().toString().replace(":", ".") + ".jpg"
+        val fileName = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+            .format(System.currentTimeMillis())
+
         val values = ContentValues()
-        values.put(MediaStore.Images.Media.DISPLAY_NAME, imageName)
+        values.put(MediaStore.Images.Media.DISPLAY_NAME, fileName)
         values.put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
         values.put(MediaStore.Images.Media.DATE_TAKEN, System.currentTimeMillis())
 
@@ -342,7 +339,7 @@ class ImageActivity : AppCompatActivity() {
             contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
         } else {
             val storageDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
-            val imageFile = File(storageDir, imageName)
+            val imageFile = File(storageDir, fileName)
             Uri.fromFile(imageFile)
         }
 

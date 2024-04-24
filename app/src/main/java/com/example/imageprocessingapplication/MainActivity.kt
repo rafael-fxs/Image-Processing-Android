@@ -132,9 +132,9 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(
                 this,
                 "Flash is Not Available",
-                Toast.LENGTH_LONG
+                Toast.LENGTH_SHORT
             ).show()
-            binding.bFlipCamera.isEnabled = false
+            bindCameraUseCases()
         }
     }
 
