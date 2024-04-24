@@ -24,9 +24,14 @@ import androidx.exifinterface.media.ExifInterface
 import com.bumptech.glide.Glide
 import com.example.imageprocessingapplication.databinding.ActivityImageBinding
 import org.opencv.android.OpenCVLoader
+import org.opencv.android.Utils.bitmapToMat
+import org.opencv.android.Utils.matToBitmap
 import org.opencv.core.Core
 import org.opencv.core.CvType
 import org.opencv.core.Mat
+import org.opencv.core.Point
+import org.opencv.core.Scalar
+import org.opencv.core.Size
 import org.opencv.imgproc.Imgproc
 import java.io.File
 import java.io.InputStream
@@ -39,12 +44,6 @@ class ImageActivity : AppCompatActivity() {
     private lateinit var imageView: ImageView
     private lateinit var imageUri: Uri
 
-    private lateinit var bResetFilter: ImageView
-    private lateinit var bGrayFilter: ImageView
-    private lateinit var bNegativeFilter: ImageView
-    private lateinit var bSepiaFilter: ImageView
-    private lateinit var bSobelFilter: ImageView
-
     private lateinit var seekBarBrightness: SeekBar
     private lateinit var seekBarContrast: SeekBar
 
@@ -56,19 +55,23 @@ class ImageActivity : AppCompatActivity() {
         binding = DataBindingUtil.setContentView(this ,R.layout.activity_image)
 
         if (!OpenCVLoader.initDebug())
-            Log.e("rafa", "Unable to load OpenCV!");
+            Log.e("OpenCVLoader", "Unable to load OpenCV!");
         else
-            Log.d("rafa", "OpenCV loaded Successfully!");
+            Log.d("OpenCVLoader", "OpenCV loaded Successfully!");
 
         imageUri = Uri.parse(intent.getStringExtra("imageUri"))
+        imageView = binding.imageView
         originalBitmap = loadBitmapFromUri(imageUri)
         actualBitmap = originalBitmap
 
-        imageView = binding.imageView
-        Glide.with(this)
-            .load(imageUri)
-            .into(imageView)
-
+        initFilterButton(binding.bResetFilter, FilterType.RESET)
+        initFilterButton(binding.bGrayFilter, FilterType.GRAY)
+        initFilterButton(binding.bNegativeFilter, FilterType.NEGATIVE)
+        initFilterButton(binding.bSepiaFilter, FilterType.SEPIA)
+        initFilterButton(binding.bSobelFilter, FilterType.SOBEL)
+        initFilterButton(binding.bEmbossFilter, FilterType.EMBOSS)
+        initFilterButton(binding.bBlurFilter, FilterType.BLUR)
+        loadImageWithGlide(binding.imageView, originalBitmap)
 
         binding.bBackMain.setOnClickListener{
             finish()
@@ -79,8 +82,22 @@ class ImageActivity : AppCompatActivity() {
             finish()
         }
 
-        startPreviewFilters()
         startSeekBars()
+    }
+
+    private fun loadImageWithGlide(imageView: ImageView, bitmap: Bitmap,) {
+        Glide.with(this)
+            .load(bitmap)
+            .into(imageView)
+    }
+
+    private fun initFilterButton(button: ImageView, filterType: FilterType) {
+        button.setOnClickListener {
+            resetSeek()
+            imageView.setImageBitmap(applyFilter(filterType))
+        }
+
+        loadImageWithGlide(button, applyFilter(filterType))
     }
 
     private fun reduceResolution(inputBitmap: Bitmap, scaleFactor: Float): Bitmap {
@@ -94,6 +111,7 @@ class ImageActivity : AppCompatActivity() {
         seekBarBrightness = binding.seekBarBrightness
         seekBarBrightness.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                seekBarContrast.progress = 0
                 applyBrightness(progress)
             }
             override fun onStartTrackingTouch(seekBar: SeekBar?) {}
@@ -103,68 +121,13 @@ class ImageActivity : AppCompatActivity() {
         seekBarContrast = binding.seekBarContrast
         seekBarContrast.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                seekBarBrightness.progress = 0
                 val contrast = progress / 100f
                 applyContrast(contrast)
             }
             override fun onStartTrackingTouch(seekBar: SeekBar?) {}
             override fun onStopTrackingTouch(seekBar: SeekBar?) {}
         })
-    }
-
-    private fun startPreviewFilters() {
-        bResetFilter = binding.bResetFilter
-        bGrayFilter = binding.bGrayFilter
-        bNegativeFilter = binding.bNegativeFilter
-        bSepiaFilter = binding.bSepiaFilter
-        bSobelFilter = binding.bSobelFilter
-        val resolution = 0.8f
-
-        Glide.with(this)
-            .load(imageUri)
-            .into(bResetFilter)
-
-        Glide.with(this)
-            .load(reduceResolution(applyFilter(FilterType.GRAY), resolution))
-            .into(bGrayFilter)
-
-        Glide.with(this)
-            .load(reduceResolution(applyFilter(FilterType.NEGATIVE), resolution))
-            .into(bNegativeFilter)
-
-        Glide.with(this)
-            .load(reduceResolution(applyFilter(FilterType.SEPIA), resolution))
-            .into(bSepiaFilter)
-
-        Glide.with(this)
-            .load(reduceResolution(applyFilter(FilterType.SOBEL), resolution))
-            .into(bSobelFilter)
-
-        bResetFilter.setOnClickListener{
-            resetSeek()
-            imageView.setImageBitmap(applyFilter(FilterType.RESET))
-        }
-
-        bGrayFilter.setOnClickListener{
-            resetSeek()
-            imageView.setImageBitmap(applyFilter(FilterType.GRAY))
-        }
-
-
-        bNegativeFilter.setOnClickListener{
-            resetSeek()
-            imageView.setImageBitmap(applyFilter(FilterType.NEGATIVE))
-        }
-
-
-        bSepiaFilter.setOnClickListener{
-            resetSeek()
-            imageView.setImageBitmap(applyFilter(FilterType.SEPIA))
-        }
-
-        bSobelFilter.setOnClickListener{
-            resetSeek()
-            imageView.setImageBitmap(applyFilter(FilterType.SOBEL))
-        }
     }
 
     private fun getExifOrientation(uri: Uri): Int {
@@ -200,6 +163,8 @@ class ImageActivity : AppCompatActivity() {
             FilterType.NEGATIVE -> applyNativeFilter(FilterType.NEGATIVE)
             FilterType.SEPIA -> applyNativeFilter(FilterType.SEPIA)
             FilterType.SOBEL -> applySobelFilter()
+            FilterType.EMBOSS -> applyEmbossFilter()
+            FilterType.BLUR -> applyBlurFilter()
             else -> originalBitmap
         }
         return actualBitmap
@@ -275,14 +240,15 @@ class ImageActivity : AppCompatActivity() {
         ))
         val colorFilter = ColorMatrixColorFilter(colorMatrix)
         paint.colorFilter = colorFilter
-
         canvas.drawBitmap(originalBitmap, 0f, 0f, paint)
+
+        actualBitmap = resultBitmap
         return resultBitmap
     }
     private fun applySobelFilter(): Bitmap {
         val bitmap: Bitmap = originalBitmap
         val mat = Mat()
-        org.opencv.android.Utils.bitmapToMat(bitmap, mat)
+        bitmapToMat(bitmap, mat)
 
         val grayMat = Mat()
         Imgproc.cvtColor(mat, grayMat, Imgproc.COLOR_BGR2GRAY)
@@ -296,10 +262,66 @@ class ImageActivity : AppCompatActivity() {
         Core.addWeighted(sobelX, 0.5, sobelY, 0.5, 0.0, sobelMat)
 
         val resultBitmap = Bitmap.createBitmap(sobelMat.cols(), sobelMat.rows(), Bitmap.Config.ARGB_8888)
-        org.opencv.android.Utils.matToBitmap(sobelMat, resultBitmap)
+        matToBitmap(sobelMat, resultBitmap)
 
+        mat.release()
+        grayMat.release()
+        sobelX.release()
+        sobelY.release()
+        sobelMat.release()
         return resultBitmap;
     }
+
+    private fun applyEmbossFilter(): Bitmap {
+        val bitmap: Bitmap = originalBitmap
+        val mat = Mat()
+        bitmapToMat(bitmap, mat)
+
+        val embossMat = Mat()
+        Imgproc.cvtColor(mat, embossMat, Imgproc.COLOR_BGR2GRAY)
+
+        val kernel = Mat(3, 3, CvType.CV_32F)
+        kernel.put(0, 0, -2.0, -1.0, 0.0)
+        kernel.put(1, 0, -1.0, 2.0, 1.0) // Adiciona um deslocamento de intensidade
+        kernel.put(2, 0, 0.0, 1.0, 2.0)
+
+        Imgproc.filter2D(embossMat, embossMat, CvType.CV_8U, kernel, Point(-1.0, -1.0), 0.0)
+
+        val resultBitmap = Bitmap.createBitmap(embossMat.cols(), embossMat.rows(), Bitmap.Config.ARGB_8888)
+        matToBitmap(embossMat, resultBitmap)
+
+        mat.release()
+        embossMat.release()
+
+        return resultBitmap
+    }
+
+    private fun applyBlurFilter(): Bitmap {
+        val bitmap: Bitmap = originalBitmap
+        val mat = Mat()
+        bitmapToMat(bitmap, mat)
+
+        val mask = Mat(mat.size(), CvType.CV_8U)
+        mask.setTo(Scalar(0.0))
+        val center = Point(mat.width() / 2.0, mat.height() / 2.0)
+        Imgproc.circle(mask, center, (mat.width() / 5), Scalar(255.0), -1)
+
+        val blurMat = Mat()
+        val size = Size(45.0, 45.0)
+        Imgproc.GaussianBlur(mat, blurMat, size, 0.0, 0.0, Core.BORDER_DEFAULT)
+        mat.copyTo(blurMat, mask)
+
+        val resultBitmap = Bitmap.createBitmap(blurMat.cols(), blurMat.rows(), Bitmap.Config.ARGB_8888)
+
+        matToBitmap(blurMat, resultBitmap)
+
+        mat.release()
+        mask.release()
+        blurMat.release()
+
+        return resultBitmap
+    }
+
 
     private fun resetSeek() {
         seekBarBrightness.progress = 0
@@ -327,13 +349,10 @@ class ImageActivity : AppCompatActivity() {
         saveUri?.let { uri ->
             val outputStream: OutputStream? = contentResolver.openOutputStream(uri)
             if (outputStream != null) {
-                // Redimensionar imagem (opcional)
-                val resizedBitmap = resizeBitmap(bitmap) // Função para redimensionar a imagem
-
-                resizedBitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream) // Ajustar qualidade de compressão
+                val resizedBitmap = resizeBitmap(bitmap)
+                resizedBitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream)
                 outputStream.close()
 
-                // Notificar o Media Scanner para atualizar a galeria
                 MediaScannerConnection.scanFile(this, arrayOf(uri.path), null, null)
                 return uri
             }
@@ -346,18 +365,18 @@ class ImageActivity : AppCompatActivity() {
         val width = bitmap.width
         val height = bitmap.height
 
-        val newWidth = width / 2 // Largura desejada em pixels
-        val newHeight = (newWidth * height) / width // Manter proporção
+        val newWidth = width / 2
+        val newHeight = (newWidth * height) / width
 
         return Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true)
     }
 
-    fun saveImageToGallery() {
+    private fun saveImageToGallery() {
         val savedImagePath = saveImage()
         if (savedImagePath != null) {
-            Toast.makeText(this, "Imagem salva em: $savedImagePath", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Image saved at: $savedImagePath", Toast.LENGTH_SHORT).show()
         } else {
-            Toast.makeText(this, "Erro ao salvar a imagem.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Error saving image.", Toast.LENGTH_SHORT).show()
         }
     }
 }

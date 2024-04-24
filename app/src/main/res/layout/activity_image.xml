@@ -16,8 +16,9 @@
             android:layout_height="match_parent"
             android:background="#000000"
             android:contentDescription="@string/captured_image"
-            app:layout_constraintBottom_toTopOf="@+id/horizontalScrollView"
-            app:srcCompat="?android:attr/scrollbarTrackVertical" />
+            app:layout_constraintBottom_toTopOf="@+id/constraintLayout2"
+            app:srcCompat="?android:attr/scrollbarTrackVertical"
+            android:layout_marginBottom="90dp" />
 
         <ImageButton
             android:id="@+id/bBackMain"
@@ -35,26 +36,6 @@
             app:tint="@color/white"
             tools:ignore="TouchTargetSizeCheck" />
 
-        <SeekBar
-            android:id="@+id/seekBarContrast"
-            android:layout_width="282dp"
-            android:layout_height="16dp"
-            android:layout_marginBottom="140dp"
-            app:layout_constraintBottom_toBottomOf="@+id/imageView"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintHorizontal_bias="0.496"
-            app:layout_constraintStart_toStartOf="parent" />
-
-        <SeekBar
-            android:id="@+id/seekBarBrightness"
-            android:layout_width="282dp"
-            android:layout_height="16dp"
-            android:layout_marginBottom="16dp"
-            app:layout_constraintBottom_toTopOf="@+id/seekBarContrast"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintHorizontal_bias="0.496"
-            app:layout_constraintStart_toStartOf="parent" />
-
         <com.google.android.material.floatingactionbutton.FloatingActionButton
             android:id="@+id/bSaveImage"
             android:layout_width="wrap_content"
@@ -71,14 +52,14 @@
             android:id="@+id/horizontalScrollView"
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            app:layout_constraintBottom_toBottomOf="parent"
-            tools:layout_editor_absoluteX="1dp">
+            app:layout_constraintBottom_toBottomOf="parent">
 
             <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="match_parent"
                 android:layout_marginBottom="10dp"
-                android:orientation="horizontal">
+                android:orientation="horizontal"
+                tools:ignore="VisualLintBounds">
 
                 <ImageView
                     android:id="@+id/bResetFilter"
@@ -86,7 +67,7 @@
                     android:layout_height="100dp"
                     android:layout_margin="10dp"
                     android:background="#606060"
-                    android:contentDescription="@string/captured_image"
+                    android:contentDescription="@string/filtro_reset"
                     app:srcCompat="@android:drawable/ic_menu_report_image" />
 
                 <ImageView
@@ -95,7 +76,7 @@
                     android:layout_height="100dp"
                     android:layout_margin="10dp"
                     android:background="#606060"
-                    android:contentDescription="@string/captured_image"
+                    android:contentDescription="@string/filtro_sepia"
                     app:srcCompat="@android:drawable/ic_menu_report_image" />
 
                 <ImageView
@@ -104,7 +85,7 @@
                     android:layout_height="100dp"
                     android:layout_margin="10dp"
                     android:background="#606060"
-                    android:contentDescription="@string/captured_image"
+                    android:contentDescription="@string/filtro_tons_de_cinza"
                     app:srcCompat="@android:drawable/ic_menu_report_image" />
 
                 <ImageView
@@ -113,7 +94,7 @@
                     android:layout_height="100dp"
                     android:layout_margin="10dp"
                     android:background="#606060"
-                    android:contentDescription="@string/captured_image"
+                    android:contentDescription="@string/filtro_negative"
                     app:srcCompat="@android:drawable/ic_menu_report_image" />
 
                 <ImageView
@@ -122,12 +103,93 @@
                     android:layout_height="100dp"
                     android:layout_margin="10dp"
                     android:background="#606060"
-                    android:contentDescription="@string/captured_image"
+                    android:contentDescription="@string/filtro_sobel"
+                    app:srcCompat="@android:drawable/ic_menu_report_image"
+                    tools:ignore="ImageContrastCheck" />
+
+                <ImageView
+                    android:id="@+id/bEmbossFilter"
+                    android:layout_width="80dp"
+                    android:layout_height="100dp"
+                    android:layout_margin="10dp"
+                    android:background="#606060"
+                    android:contentDescription="@string/filtro_emboss"
+                    app:srcCompat="@android:drawable/ic_menu_report_image"
+                    tools:ignore="ImageContrastCheck" />
+
+                <ImageView
+                    android:id="@+id/bBlurFilter"
+                    android:layout_width="80dp"
+                    android:layout_height="100dp"
+                    android:layout_margin="10dp"
+                    android:background="#606060"
+                    android:contentDescription="@string/filtro_radial_blur"
                     app:srcCompat="@android:drawable/ic_menu_report_image"
                     tools:ignore="ImageContrastCheck" />
 
             </LinearLayout>
         </HorizontalScrollView>
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/constraintLayout"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="4dp"
+            app:layout_constraintBottom_toTopOf="@+id/horizontalScrollView"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent">
+
+            <SeekBar
+                android:id="@+id/seekBarContrast"
+                android:layout_width="282dp"
+                android:layout_height="16dp"
+                android:layout_marginStart="8dp"
+                app:layout_constraintBottom_toBottomOf="@+id/tContrasteView"
+                app:layout_constraintStart_toEndOf="@+id/tContrasteView"
+                app:layout_constraintTop_toTopOf="@+id/tContrasteView"
+                app:layout_constraintVertical_bias="0.333" />
+
+            <TextView
+                android:id="@+id/tContrasteView"
+                android:layout_width="65dp"
+                android:layout_height="wrap_content"
+                android:text="@string/contraste"
+                android:textColor="#757575"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                tools:ignore="TextSizeCheck" />
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/constraintLayout2"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="4dp"
+            app:layout_constraintBottom_toTopOf="@+id/constraintLayout"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent">
+
+            <SeekBar
+                android:id="@+id/seekBarBrightness"
+                android:layout_width="282dp"
+                android:layout_height="16dp"
+                android:layout_marginStart="8dp"
+                app:layout_constraintBottom_toBottomOf="@+id/tBrilhoView"
+                app:layout_constraintStart_toEndOf="@+id/tBrilhoView"
+                app:layout_constraintTop_toTopOf="@+id/tBrilhoView"
+                app:layout_constraintVertical_bias="0.333" />
+
+            <TextView
+                android:id="@+id/tBrilhoView"
+                android:layout_width="65dp"
+                android:layout_height="wrap_content"
+                android:text="@string/brilho"
+                android:textColor="#757575"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+        </androidx.constraintlayout.widget.ConstraintLayout>
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 </layout>

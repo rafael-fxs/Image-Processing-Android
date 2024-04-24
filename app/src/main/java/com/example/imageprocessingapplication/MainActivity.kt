@@ -57,6 +57,10 @@ class MainActivity : AppCompatActivity() {
             bindCameraUseCases()
         }
 
+        binding.bFlashCamera.setOnClickListener {
+            toggleFlashCamera()
+        }
+
         binding.bCapturePhoto.setOnClickListener {
             takePhoto()
         }
@@ -114,6 +118,23 @@ class MainActivity : AppCompatActivity() {
             )
         } catch (e: Exception) {
             e.printStackTrace()
+        }
+    }
+
+    private fun toggleFlashCamera() {
+        if (camera.cameraInfo.hasFlashUnit()) {
+            if (camera.cameraInfo.torchState.value == 0) {
+                camera.cameraControl.enableTorch(true)
+            } else {
+                camera.cameraControl.enableTorch(false)
+            }
+        } else {
+            Toast.makeText(
+                this,
+                "Flash is Not Available",
+                Toast.LENGTH_LONG
+            ).show()
+            binding.bFlipCamera.isEnabled = false
         }
     }
 

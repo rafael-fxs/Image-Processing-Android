@@ -6,4 +6,13 @@
     <string name="captured_image">Captured image</string>
     <string name="back_to_home">Back to home</string>
     <string name="save_image">Save Image</string>
+    <string name="filtro_radial_blur">Filtro Radial Blur</string>
+    <string name="filtro_emboss">Filtro Emboss</string>
+    <string name="filtro_tons_de_cinza">Filtro Tons de Cinza</string>
+    <string name="filtro_negative">Filtro Negative</string>
+    <string name="filtro_reset">Filtro Reset</string>
+    <string name="filtro_sepia">Filtro Sepia</string>
+    <string name="filtro_sobel">Filtro Sobel</string>
+    <string name="brilho">Brilho</string>
+    <string name="contraste">Contraste</string>
 </resources>
