@@ -11,6 +11,8 @@ appcompat = "1.6.1"
 material = "1.11.0"
 activity = "1.8.0"
 constraintlayout = "2.1.4"
+opencv = "4.5.3.0"
+opencvAndroid = "4.5.5"
 
 [libraries]
 androidx-camera-camera2 = { module = "androidx.camera:camera-camera2", version.ref = "cameraxVersion" }
@@ -29,7 +31,9 @@ androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 androidx-activity = { group = "androidx.activity", name = "activity", version.ref = "activity" }
 androidx-constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "constraintlayout" }
+opencv = { module = "com.quickbirdstudios:opencv", version.ref = "opencv" }
 opencv-android = { module = "org.opencv:opencv-android", version.ref = "opencvAndroid" }
+opencv-opencv-android = { module = "org.opencv:opencv-android", version.ref = "opencvAndroid" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

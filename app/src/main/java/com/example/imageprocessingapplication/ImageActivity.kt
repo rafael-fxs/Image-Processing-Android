@@ -8,9 +8,13 @@ import android.graphics.ColorMatrix
 import android.graphics.ColorMatrixColorFilter
 import android.graphics.Matrix
 import android.graphics.Paint
+import android.media.MediaScannerConnection
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.os.Environment
 import android.provider.MediaStore
+import android.util.Log
 import android.widget.ImageView
 import android.widget.SeekBar
 import android.widget.Toast
@@ -19,9 +23,14 @@ import androidx.databinding.DataBindingUtil
 import androidx.exifinterface.media.ExifInterface
 import com.bumptech.glide.Glide
 import com.example.imageprocessingapplication.databinding.ActivityImageBinding
-import java.io.ByteArrayOutputStream
-import java.io.FileOutputStream
+import org.opencv.android.OpenCVLoader
+import org.opencv.core.Core
+import org.opencv.core.CvType
+import org.opencv.core.Mat
+import org.opencv.imgproc.Imgproc
+import java.io.File
 import java.io.InputStream
+import java.io.OutputStream
 
 
 class ImageActivity : AppCompatActivity() {
@@ -40,17 +49,20 @@ class ImageActivity : AppCompatActivity() {
     private lateinit var seekBarContrast: SeekBar
 
     private lateinit var originalBitmap: Bitmap
-    private lateinit var previewBitmap: Bitmap
     private lateinit var actualBitmap: Bitmap
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = DataBindingUtil.setContentView(this ,R.layout.activity_image)
 
+        if (!OpenCVLoader.initDebug())
+            Log.e("rafa", "Unable to load OpenCV!");
+        else
+            Log.d("rafa", "OpenCV loaded Successfully!");
 
         imageUri = Uri.parse(intent.getStringExtra("imageUri"))
         originalBitmap = loadBitmapFromUri(imageUri)
-        previewBitmap = reduceResolution(originalBitmap,  0.5f)
+        actualBitmap = originalBitmap
 
         imageView = binding.imageView
         Glide.with(this)
@@ -63,12 +75,11 @@ class ImageActivity : AppCompatActivity() {
         }
 
         binding.bSaveImage.setOnClickListener{
-            saveImage()
+            saveImageToGallery()
+            finish()
         }
 
         startPreviewFilters()
-        actualBitmap = originalBitmap
-
         startSeekBars()
     }
 
@@ -106,52 +117,53 @@ class ImageActivity : AppCompatActivity() {
         bNegativeFilter = binding.bNegativeFilter
         bSepiaFilter = binding.bSepiaFilter
         bSobelFilter = binding.bSobelFilter
+        val resolution = 0.8f
 
         Glide.with(this)
             .load(imageUri)
             .into(bResetFilter)
 
         Glide.with(this)
-            .load(applyFilter(FilterType.GRAY, true))
+            .load(reduceResolution(applyFilter(FilterType.GRAY), resolution))
             .into(bGrayFilter)
 
         Glide.with(this)
-            .load(applyFilter(FilterType.NEGATIVE, true))
+            .load(reduceResolution(applyFilter(FilterType.NEGATIVE), resolution))
             .into(bNegativeFilter)
 
         Glide.with(this)
-            .load(applyFilter(FilterType.SEPIA, true))
+            .load(reduceResolution(applyFilter(FilterType.SEPIA), resolution))
             .into(bSepiaFilter)
 
         Glide.with(this)
-            .load(applyFilter(FilterType.SOBEL, true))
+            .load(reduceResolution(applyFilter(FilterType.SOBEL), resolution))
             .into(bSobelFilter)
 
         bResetFilter.setOnClickListener{
             resetSeek()
-            imageView.setImageBitmap(applyFilter(FilterType.RESET, true))
+            imageView.setImageBitmap(applyFilter(FilterType.RESET))
         }
 
         bGrayFilter.setOnClickListener{
             resetSeek()
-            imageView.setImageBitmap(applyFilter(FilterType.GRAY, true))
+            imageView.setImageBitmap(applyFilter(FilterType.GRAY))
         }
 
 
         bNegativeFilter.setOnClickListener{
             resetSeek()
-            imageView.setImageBitmap(applyFilter(FilterType.NEGATIVE, true))
+            imageView.setImageBitmap(applyFilter(FilterType.NEGATIVE))
         }
 
 
         bSepiaFilter.setOnClickListener{
             resetSeek()
-            imageView.setImageBitmap(applyFilter(FilterType.SEPIA, true))
+            imageView.setImageBitmap(applyFilter(FilterType.SEPIA))
         }
 
         bSobelFilter.setOnClickListener{
             resetSeek()
-            imageView.setImageBitmap(applyFilter(FilterType.SOBEL, true))
+            imageView.setImageBitmap(applyFilter(FilterType.SOBEL))
         }
     }
 
@@ -182,24 +194,24 @@ class ImageActivity : AppCompatActivity() {
         }
     }
 
-    private fun applyFilter(filterType: FilterType, isPreviewImage: Boolean): Bitmap {
-        var bitmap: Bitmap = if (isPreviewImage) previewBitmap else originalBitmap
-
-        if (filterType == FilterType.RESET) {
-            return bitmap
+    private fun applyFilter(filterType: FilterType): Bitmap {
+        actualBitmap = when (filterType) {
+            FilterType.GRAY -> applyNativeFilter(FilterType.GRAY)
+            FilterType.NEGATIVE -> applyNativeFilter(FilterType.NEGATIVE)
+            FilterType.SEPIA -> applyNativeFilter(FilterType.SEPIA)
+            FilterType.SOBEL -> applySobelFilter()
+            else -> originalBitmap
         }
-        if (filterType == FilterType.SOBEL) {
-            return applySobelFilter(isPreviewImage);
-        }
+        return actualBitmap
+    }
 
+    private fun applyNativeFilter(filterType: FilterType): Bitmap {
+        val bitmap: Bitmap = originalBitmap
         val resultBitmap = Bitmap.createBitmap(bitmap.width, bitmap.height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(resultBitmap)
         val paint = Paint()
-        val colorMatrix = getColorMatrix(filterType)
-        val filter = ColorMatrixColorFilter(colorMatrix)
-        paint.colorFilter = filter
+        paint.colorFilter = ColorMatrixColorFilter(getColorMatrix(filterType))
         canvas.drawBitmap(bitmap, 0f, 0f, paint)
-        if (!isPreviewImage) actualBitmap = resultBitmap
         return resultBitmap
     }
 
@@ -267,10 +279,26 @@ class ImageActivity : AppCompatActivity() {
         canvas.drawBitmap(originalBitmap, 0f, 0f, paint)
         return resultBitmap
     }
+    private fun applySobelFilter(): Bitmap {
+        val bitmap: Bitmap = originalBitmap
+        val mat = Mat()
+        org.opencv.android.Utils.bitmapToMat(bitmap, mat)
 
-    private fun applySobelFilter(isPreviewImage: Boolean): Bitmap {
-        val bitmap = applyFilter(FilterType.RESET, isPreviewImage)
-        return bitmap
+        val grayMat = Mat()
+        Imgproc.cvtColor(mat, grayMat, Imgproc.COLOR_BGR2GRAY)
+        val sobelX = Mat()
+        val sobelY = Mat()
+        Imgproc.Sobel(grayMat, sobelX, CvType.CV_16S, 1, 0)
+        Imgproc.Sobel(grayMat, sobelY, CvType.CV_16S, 0, 1)
+        Core.convertScaleAbs(sobelX, sobelX)
+        Core.convertScaleAbs(sobelY, sobelY)
+        val sobelMat = Mat()
+        Core.addWeighted(sobelX, 0.5, sobelY, 0.5, 0.0, sobelMat)
+
+        val resultBitmap = Bitmap.createBitmap(sobelMat.cols(), sobelMat.rows(), Bitmap.Config.ARGB_8888)
+        org.opencv.android.Utils.matToBitmap(sobelMat, resultBitmap)
+
+        return resultBitmap;
     }
 
     private fun resetSeek() {
@@ -278,48 +306,58 @@ class ImageActivity : AppCompatActivity() {
         seekBarContrast.progress = 0
     }
 
-    private fun saveImage() {
-        val fileName: String = System.currentTimeMillis().toString().replace(":", ".") + ".jpg"
-        val contentValues = ContentValues().apply {
-            put(MediaStore.Images.Media.TITLE, fileName)
-            put(MediaStore.Images.Media.DISPLAY_NAME, fileName)
-            put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+
+    private fun saveImage(): Uri? {
+        val bitmap = actualBitmap
+        val imageName: String = System.currentTimeMillis().toString().replace(":", ".") + ".jpg"
+        val values = ContentValues()
+        values.put(MediaStore.Images.Media.DISPLAY_NAME, imageName)
+        values.put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+        values.put(MediaStore.Images.Media.DATE_TAKEN, System.currentTimeMillis())
+
+        val saveUri: Uri? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val contentResolver = this.contentResolver
+            contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+        } else {
+            val storageDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
+            val imageFile = File(storageDir, imageName)
+            Uri.fromFile(imageFile)
         }
 
-        val contentResolver = this.contentResolver
-        val uri: Uri? = contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
+        saveUri?.let { uri ->
+            val outputStream: OutputStream? = contentResolver.openOutputStream(uri)
+            if (outputStream != null) {
+                // Redimensionar imagem (opcional)
+                val resizedBitmap = resizeBitmap(bitmap) // Função para redimensionar a imagem
 
-        uri?.let {
-            val fileDescriptor = contentResolver.openFileDescriptor(it, "w")?.fileDescriptor
-            val outputStream = FileOutputStream(fileDescriptor)
+                resizedBitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream) // Ajustar qualidade de compressão
+                outputStream.close()
 
-            // Calculating the desired quality for a 1MB file size
-            val targetFileSize = 1024 * 1024 // 1MB in bytes
-            var quality = 100
-            var bitmapStream: ByteArrayOutputStream? = null
-            var bitmapBytes: ByteArray? = null
-
-            while (outputStream.channel.size() > targetFileSize && quality > 0) {
-                bitmapStream = ByteArrayOutputStream()
-                actualBitmap.compress(Bitmap.CompressFormat.JPEG, quality, bitmapStream)
-                bitmapBytes = bitmapStream.toByteArray()
-                quality -= 5 // Decrease quality gradually
+                // Notificar o Media Scanner para atualizar a galeria
+                MediaScannerConnection.scanFile(this, arrayOf(uri.path), null, null)
+                return uri
             }
-
-            bitmapBytes?.let {
-                outputStream.write(it)
-            }
-
-            outputStream.flush()
-            outputStream.close()
-            bitmapStream?.close()
         }
 
-        Toast.makeText(
-            this@ImageActivity,
-            "Imagem salva!",
-            Toast.LENGTH_LONG
-        ).show()
-        finish()
+        return null
+    }
+
+    private fun resizeBitmap(bitmap: Bitmap): Bitmap {
+        val width = bitmap.width
+        val height = bitmap.height
+
+        val newWidth = width / 2 // Largura desejada em pixels
+        val newHeight = (newWidth * height) / width // Manter proporção
+
+        return Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true)
+    }
+
+    fun saveImageToGallery() {
+        val savedImagePath = saveImage()
+        if (savedImagePath != null) {
+            Toast.makeText(this, "Imagem salva em: $savedImagePath", Toast.LENGTH_SHORT).show()
+        } else {
+            Toast.makeText(this, "Erro ao salvar a imagem.", Toast.LENGTH_SHORT).show()
+        }
     }
 }
